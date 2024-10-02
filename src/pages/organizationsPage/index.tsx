@@ -17,6 +17,8 @@ const OrganizationsPage = () => {
     const [orgs, setOrgs] = useState<IDataTable[]>([]);
     const [name, setName] = useState<string>('');
     const [date, setDate] = useState<Dayjs | null>(null);
+    const [currentOrg, setCurrentOrg] = useState<string | null>(null);
+    const [isEdit, setIsEdit] = useState<boolean>(false);
 
     const getOrganizations = () => {
         OrganizationsAPI.getOrganizations().then((response) => {
@@ -31,9 +33,6 @@ const OrganizationsPage = () => {
     };
 
     const saveOrganization = () => {
-        if (!name || !date) {
-            Notifications.setSnackMessage('Успешно');
-        }
         OrganizationsAPI.createOrganizations({
             name,
             exp: dayjs(date).valueOf(),
@@ -53,6 +52,44 @@ const OrganizationsPage = () => {
             });
     };
 
+    const editOrganizations = () => {
+        if (currentOrg) {
+            OrganizationsAPI.editOrganizations({
+                id: currentOrg,
+                name,
+                exp: dayjs(date).valueOf(),
+            })
+                .then((response) => {
+                    if (response.status <= 204) {
+                        setName('');
+                        setDate(null);
+                        setCurrentOrg(null);
+                        setIsEdit(false);
+                        getOrganizations();
+                        Notifications.setSnackMessage('Успешно');
+                    } else {
+                        Notifications.setSnackMessage('Ошибка');
+                    }
+                })
+                .catch(() => {
+                    Notifications.setSnackMessage('Ошибка');
+                });
+        }
+    };
+
+    const handleSave = () => {
+        if (!name || !date) {
+            Notifications.setSnackMessage('Заполните поля');
+            return;
+        }
+
+        if (isEdit) {
+            editOrganizations();
+        } else {
+            saveOrganization();
+        }
+    };
+
     const deleteOrganization = (id: string) => {
         OrganizationsAPI.deleteOrganization(id)
             .then((response) => {
@@ -68,6 +105,20 @@ const OrganizationsPage = () => {
             });
     };
 
+    const handleEdit = (org: IDataTable) => {
+        setCurrentOrg(org.id);
+        setName(org.name);
+        setDate(dayjs(org.date));
+        setIsEdit(true);
+    };
+
+    const handleCancel = () => {
+        setName('');
+        setDate(null);
+        setCurrentOrg(null);
+        setIsEdit(false);
+    };
+
     useEffect(() => {
         if (Organizations.organizations.length) {
             setOrgs(Organizations.organizations);
@@ -79,6 +130,7 @@ const OrganizationsPage = () => {
     return (
         <div className={styles.body}>
             <div className={styles['form-block']}>
+                {isEdit && <span>Редактирование</span>}
                 <TextField
                     label='Название организации '
                     variant='outlined'
@@ -93,10 +145,23 @@ const OrganizationsPage = () => {
                         display: 'block',
                     }}
                     variant='contained'
-                    onClick={saveOrganization}
+                    onClick={handleSave}
                 >
                     Сохранить
                 </Button>
+                {isEdit && (
+                    <Button
+                        sx={{
+                            my: 2,
+                            color: 'white',
+                            display: 'block',
+                        }}
+                        variant='contained'
+                        onClick={handleCancel}
+                    >
+                        Отмена
+                    </Button>
+                )}
             </div>
             <Table sx={{ minWidth: 650 }} size='small' aria-label='a dense table'>
                 <TableHead>
@@ -123,6 +188,16 @@ const OrganizationsPage = () => {
                                     onClick={() => deleteOrganization(org.id)}
                                 >
                                     удалить
+                                </Button>
+                                <Button
+                                    sx={{
+                                        my: 2,
+                                        color: 'black',
+                                        display: 'block',
+                                    }}
+                                    onClick={() => handleEdit(org)}
+                                >
+                                    редактировать
                                 </Button>
                             </TableCell>
                         </TableRow>
